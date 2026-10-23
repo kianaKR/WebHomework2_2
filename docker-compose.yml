@@ -1,0 +1,37 @@
+services:
+  httpbin:
+    image: ghcr.io/mccutchen/go-httpbin
+    environment:
+      PORT: "8081"
+    # no "ports" here, so it is only reachable from the backend network
+    networks:
+      - backend
+    restart: unless-stopped
+
+  proxy:
+    build:
+      context: .
+      # pip needs the host proxy while building
+      network: host
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+    ports:
+      - "80:80"
+    environment:
+      UPSTREAM_URL: http://httpbin:8081
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is not set, check the .env file}
+      DEMO_USER: ${DEMO_USER:-student}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:?DEMO_PASSWORD is not set, check the .env file}
+      TOKEN_MINUTES: ${TOKEN_MINUTES:-30}
+    depends_on:
+      - httpbin
+    networks:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+networks:
+  frontend:
+  backend:
+    internal: true
